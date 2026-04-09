@@ -1,0 +1,53 @@
+:root {
+	--surface-bg: #f9f4ea;
+	--surface-radial: #fbf8f2;
+	--surface-card: #ffffffd9;
+	--surface-input: #fffdf8;
+	--surface-alt: #f6efe1;
+	--surface-border: #d8cab2;
+	--tone-strong: #2f2415;
+	--tone-soft: #5e4d39;
+	--tone-muted: #6f5a42;
+	--accent-soft: #f3a53a;
+	--accent-strong: #cc6a21;
+	--accent-error: #a63b2f;
+	--shadow-soft: 0 16px 36px rgba(72, 43, 15, 0.12);
+	font-family: "Avenir Next", "Trebuchet MS", "Segoe UI", sans-serif;
+	color: var(--tone-soft);
+	background-color: var(--surface-bg);
+	font-size: 17px;
+	line-height: 1.45;
+	font-synthesis: none;
+	text-rendering: optimizeLegibility;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	min-height: 100vh;
+	background:
+		radial-gradient(circle at top left, var(--surface-radial), transparent 42%),
+		radial-gradient(circle at 82% 10%, #f3debfcc, transparent 30%),
+		linear-gradient(180deg, #f9f4ea 0%, #efe1ca 100%);
+}
+
+#root {
+	min-height: 100vh;
+}
+
+h1,
+h2 {
+	margin: 0;
+	color: var(--tone-strong);
+	font-family: "Avenir Next", "Trebuchet MS", "Segoe UI", sans-serif;
+}
+
+h1 {
+	font-size: clamp(2rem, 4vw, 2.9rem);
+	letter-spacing: -0.02em;
+}
