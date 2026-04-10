@@ -34,13 +34,13 @@ chmod +x "$HOME/Library/Application Support/SwiftBar/Plugins/meowvertime.1m.js"
 - 주간 목표: `40h` (월~금)
 - 일별 인정근무: `max(0, 퇴근-출근-휴게)`
 - 일별 인정 상한: `9h` (8h + 1h)
-- `9h` 초과분은 주간 합산에 반영되지 않아요
+- `9h` 초과분은 주간 합산에 반영되지 않는다냥
 - 금요일 필요 인정근무 = `40h - (월~목 인정 누적)`
 - 점심/휴게: `12:30~13:30` 고정(60분, 자동 차감)
 
 ## 4) SwiftBar 입력 방식
 
-드롭다운에서 아래 메뉴로 입력해요.
+드롭다운에서 아래 메뉴로 입력해옹
 
 - `월 입력`
 - `화 입력`
@@ -49,7 +49,7 @@ chmod +x "$HOME/Library/Application Support/SwiftBar/Plugins/meowvertime.1m.js"
 - `금 입력`
 - `주간 한줄 입력(빠른 편집)`
 
-`월/화/수/목/금 입력`은 해당 요일만 팝업으로 수정해요.
+`월/화/수/목/금 입력`은 해당 요일만 팝업으로 수정할 수 있다옹
 
 - `H`: 공휴일(자동 8h)
 - `-`: 미입력
@@ -60,13 +60,13 @@ chmod +x "$HOME/Library/Application Support/SwiftBar/Plugins/meowvertime.1m.js"
 09:00-18:00, 09:00-19:00, H, -, 09:00-
 ```
 
-요일 라벨 버전도 사용할 수 있어요:
+요일 라벨 버전도 사용할 수 있냥!:
 
 ```text
 월 09:00-18:00, 화 09:00-19:00, 수 H, 목 -, 금 09:00-
 ```
 
-주간 기록은 JSON 파일에 저장돼요.
+주간 기록은 JSON 파일에 저장돼옹.
 
 - 기본 위치: `scripts/swiftbar/.meowvertime-state.json`
 - 원하는 위치로 변경: `MEOW_STATE_FILE`
