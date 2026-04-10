@@ -758,10 +758,10 @@ const renderMenu = ({
     remainingLiveMinutes > 0
       ? `💗 ${formatDuration(remainingLiveMinutes)}`
       : `😼 +${formatDuration(overLiveMinutes)}`;
-  const headlineColor = "#FFFFFF";
   const activeLineSuffix = "refresh=true";
 
-  console.log(`${headline} | color=${headlineColor} dropdown=false`);
+  // Keep menubar text color automatic so macOS can adapt to background.
+  console.log(`${headline} | dropdown=false`);
   console.log("---");
   console.log(
     `🐱 Meowvertime Week | color=#ff7aa2 size=13 ${activeLineSuffix}`,
