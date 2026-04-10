@@ -9,7 +9,7 @@
 - 일별 인정근무는 최대 9시간(기본 8h + 오버타임 1h cap)까지 반영해옹
 - 금요일 필요 인정근무와 예상 퇴근 시각까지 보여줘옹
 
-## 스크린샷
+## PreView
 
 ![meowvertime SwiftBar preview](docs/meowvertime-preview.png)
 
@@ -52,6 +52,7 @@ chmod +x "$HOME/Library/Application Support/SwiftBar/Plugins/meowvertime.1m.js"
 - `목 입력`
 - `금 입력`
 - `주간 한줄 입력(빠른 편집)`
+- `Flex 화면 붙여넣기 import`
 
 `월/화/수/목/금 입력`은 해당 요일만 팝업으로 수정할 수 있다옹
 
@@ -64,16 +65,22 @@ chmod +x "$HOME/Library/Application Support/SwiftBar/Plugins/meowvertime.1m.js"
 09:00-18:00, 09:00-19:00, H, -, 09:00-
 ```
 
-요일 라벨 버전도 사용할 수 있냥!:
-
-```text
-월 09:00-18:00, 화 09:00-19:00, 수 H, 목 -, 금 09:00-
-```
-
 주간 기록은 JSON 파일에 저장돼옹.
 
 - 기본 위치: `scripts/swiftbar/.meowvertime-state.json`
 - 원하는 위치로 변경: `MEOW_STATE_FILE`
+
+`Flex 화면 붙여넣기 import` 사용법:
+
+1. Flex `내 근무 > 주간` 화면에서 타임라인 영역 요소를 선택하고 `Copy outerHTML` 해옹
+2. SwiftBar 메뉴에서 `Flex 화면 붙여넣기 import`를 눌러옹
+3. 월~금 감지된 시간으로 이번주 기록이 자동 반영돼옹
+
+팁:
+
+- `import`는 HTML 전용이라 텍스트만 복사하면 반영되지 않아옹
+- 파서는 클래스명보다 `오전/오후 HH:MM` 텍스트를 우선으로 읽어서 화면 구조 변경에 조금 더 강해졌어옹
+- 텍스트 입력은 `주간 한줄 입력(빠른 편집)` 메뉴를 사용해옹
 
 ## 5) 환경변수
 

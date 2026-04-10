@@ -14,13 +14,6 @@ const DAILY_RECOGNIZED_MAX_MINUTES = 9 * 60;
 const WEEKLY_TARGET_MINUTES = 40 * 60;
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금"];
-const WEEKDAY_INDEX = {
-  월: 0,
-  화: 1,
-  수: 2,
-  목: 3,
-  금: 4,
-};
 const HOLIDAY_INPUT_TOKENS = new Set(["H", "HOL", "HOLIDAY", "공휴일"]);
 
 const BLACK_COLOR = "#000000";
@@ -331,6 +324,10 @@ const getHolidaySetFromEnv = () => {
   return set;
 };
 
+// 일별 계산 핵심 로직:
+// - 고정 점심시간 차감
+// - 공휴일(자동/수동) 처리
+// - 인정근무 9h 상한 및 초과분 추적
 const evaluateDay = ({ record, dateKey, todayKey, nowMinutes, holidaySet }) => {
   const startMinutes = parseTimeToMinutes(record.startTime);
   const endMinutes = parseTimeToMinutes(record.endTime);
@@ -483,6 +480,15 @@ const runAppleScriptPrompt = async (title, message, defaultValue) => {
   return String(result.stdout ?? "").trim();
 };
 
+const readClipboardText = async () => {
+  const { spawnSync } = await getChildProcess();
+  const result = spawnSync("pbpaste", [], { encoding: "utf8" });
+  if (result.status !== 0) {
+    return null;
+  }
+  return String(result.stdout ?? "");
+};
+
 const notify = async (title, message) => {
   const { spawnSync } = await getChildProcess();
   const safe = (value) =>
@@ -517,6 +523,163 @@ const buildWeekInputDefault = (dayMetrics) => {
 const isHolidayInputToken = (value) =>
   HOLIDAY_INPUT_TOKENS.has(String(value ?? "").toUpperCase());
 
+const extractMeridiemTimeTokens = (text) => {
+  const tokens = [];
+  const pattern = /(오전|오후)\s*([0-1]?\d):([0-5]\d)/g;
+  for (const match of String(text ?? "").matchAll(pattern)) {
+    let hour = Number(match[2]);
+    const minutes = match[3];
+
+    if (match[1] === "오전") {
+      if (hour === 12) {
+        hour = 0;
+      }
+    } else if (hour < 12) {
+      hour += 12;
+    }
+
+    tokens.push(`${String(hour).padStart(2, "0")}:${minutes}`);
+  }
+  return tokens;
+};
+
+const uniqueOrdered = (items) => {
+  const seen = new Set();
+  const unique = [];
+  for (const item of items) {
+    if (!seen.has(item)) {
+      seen.add(item);
+      unique.push(item);
+    }
+  }
+  return unique;
+};
+
+const parseDayValueFromSection = (section) => {
+  if (!section) {
+    return "";
+  }
+
+  if (/(공휴일|HOLIDAY)/i.test(section)) {
+    return "H";
+  }
+
+  const times = uniqueOrdered(extractMeridiemTimeTokens(section));
+  if (times.length >= 2) {
+    return `${times[0]}-${times[times.length - 1]}`;
+  }
+  if (times.length === 1) {
+    return `${times[0]}-`;
+  }
+  return "";
+};
+
+const getSectionsByTextHeuristic = (html) => {
+  const sections = [
+    ...html.matchAll(/<section\b[^>]*>[\s\S]*?<\/section>/gi),
+  ].map((match) => match[0]);
+
+  if (sections.length < 5) {
+    return [];
+  }
+
+  const candidates = sections.map((section) => {
+    const times = uniqueOrdered(extractMeridiemTimeTokens(section));
+    const containsRest = /휴게/.test(section);
+    const containsAmPm = /오전|오후/.test(section);
+    return { section, times, containsRest, containsAmPm };
+  });
+
+  let bestStart = -1;
+  let bestScore = -1e9;
+
+  for (let start = 0; start <= candidates.length - 5; start += 1) {
+    const slice = candidates.slice(start, start + 5);
+    const timeCounts = slice.map((item) => item.times.length);
+    const daysWithAnyTime = timeCounts.filter((count) => count > 0).length;
+    const daysWithTwoOrMore = timeCounts.filter((count) => count >= 2).length;
+
+    if (daysWithAnyTime < 4) {
+      continue;
+    }
+
+    let score = 0;
+    score += daysWithAnyTime * 100;
+    score += daysWithTwoOrMore * 60;
+
+    for (const item of slice) {
+      const count = item.times.length;
+      if (count === 0) {
+        score -= 40;
+      } else if (count <= 3) {
+        score += count * 20;
+      } else {
+        score -= (count - 3) * 30;
+      }
+      if (item.containsRest) {
+        score += 5;
+      }
+      if (item.containsAmPm) {
+        score += 10;
+      }
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestStart = start;
+    }
+  }
+
+  if (bestStart < 0) {
+    return [];
+  }
+
+  return candidates
+    .slice(bestStart, bestStart + 5)
+    .map((candidate) => candidate.section);
+};
+
+const parseFlexHtmlImportText = (htmlText, weekDateKeys) => {
+  const html = String(htmlText ?? "");
+  const sections = getSectionsByTextHeuristic(html);
+
+  if (sections.length < 5) {
+    return { error: "Flex 주간 HTML 섹션을 찾지 못했어요." };
+  }
+
+  const updates = [];
+  for (let dayIndex = 0; dayIndex < 5; dayIndex += 1) {
+    const section = sections[dayIndex] ?? "";
+    if (!section) {
+      continue;
+    }
+
+    const dayLabel = WEEKDAY_LABELS[dayIndex];
+    const dateKey = weekDateKeys[dayIndex];
+    let dayValue = "";
+
+    dayValue = parseDayValueFromSection(section);
+
+    if (!dayValue) {
+      continue;
+    }
+
+    const parsed = parseDayInputValue(dayValue, dayLabel, dateKey);
+    if (!parsed.error) {
+      updates.push(parsed.update);
+    }
+  }
+
+  if (updates.length === 0) {
+    return {
+      error:
+        "Flex HTML에서 월~금 출퇴근 정보를 찾지 못했어요. 타임라인 영역의 outerHTML을 복사해서 다시 시도해 주세요.",
+    };
+  }
+
+  return { updates };
+};
+
 const parseWeekInputText = (text, weekDateKeys) => {
   const raw = normalizeText(text);
   if (!raw) {
@@ -529,45 +692,18 @@ const parseWeekInputText = (text, weekDateKeys) => {
     .filter((chunk) => chunk !== "");
   const updates = [];
 
-  const labeledPattern = /^([월화수목금])\s+(.+)$/;
-  const labeledCount = tokens.filter((token) =>
-    labeledPattern.test(token),
-  ).length;
-
-  if (labeledCount > 0 && labeledCount < tokens.length) {
-    return { error: "요일 라벨 방식과 무라벨 방식을 섞어 쓰지 말아주세요." };
+  if (tokens.length !== 5) {
+    return { error: "주간 한줄 입력은 5개(월~금) 값을 콤마로 입력해 주세요." };
   }
 
-  if (labeledCount === tokens.length) {
-    for (const token of tokens) {
-      const matched = token.match(labeledPattern);
-      if (!matched) {
-        return { error: `형식 오류: ${token}` };
-      }
-
-      const weekdayLabel = matched[1];
-      const dayIndex = WEEKDAY_INDEX[weekdayLabel];
-      const dateKey = weekDateKeys[dayIndex];
-      const parsed = parseDayInputValue(matched[2], weekdayLabel, dateKey);
-      if (parsed.error) {
-        return { error: parsed.error };
-      }
-      updates.push(parsed.update);
+  for (let dayIndex = 0; dayIndex < 5; dayIndex += 1) {
+    const dayLabel = WEEKDAY_LABELS[dayIndex];
+    const dateKey = weekDateKeys[dayIndex];
+    const parsed = parseDayInputValue(tokens[dayIndex], dayLabel, dateKey);
+    if (parsed.error) {
+      return { error: parsed.error };
     }
-  } else {
-    if (tokens.length !== 5) {
-      return { error: "무라벨 입력은 5개(월~금) 값을 콤마로 입력해 주세요." };
-    }
-
-    for (let dayIndex = 0; dayIndex < 5; dayIndex += 1) {
-      const dayLabel = WEEKDAY_LABELS[dayIndex];
-      const dateKey = weekDateKeys[dayIndex];
-      const parsed = parseDayInputValue(tokens[dayIndex], dayLabel, dateKey);
-      if (parsed.error) {
-        return { error: parsed.error };
-      }
-      updates.push(parsed.update);
-    }
+    updates.push(parsed.update);
   }
 
   if (updates.length === 0) {
@@ -575,6 +711,26 @@ const parseWeekInputText = (text, weekDateKeys) => {
   }
 
   return { updates };
+};
+
+const parseClipboardImportText = (text, weekDateKeys) => {
+  const normalized = normalizeText(String(text ?? "").replace(/\r/g, "\n"));
+  if (!normalized) {
+    return { error: "클립보드가 비어 있어요." };
+  }
+
+  const isLikelyHtml =
+    normalized.includes("<") &&
+    normalized.includes(">") &&
+    /<\/?[a-z][\s\S]*>/i.test(normalized);
+  if (!isLikelyHtml) {
+    return {
+      error:
+        "클립보드 import는 HTML만 지원해요. Flex 타임라인 영역에서 Copy outerHTML 후 다시 시도해 주세요.",
+    };
+  }
+
+  return parseFlexHtmlImportText(normalized, weekDateKeys);
 };
 
 const parseDayInputValue = (value, dayLabel, dateKey) => {
@@ -677,9 +833,8 @@ const runActionIfNeeded = async ({ action, weekDateKeys, dayMetrics }) => {
     const defaultText = buildWeekInputDefault(dayMetrics);
     const message = [
       "주간 입력 (쉼표로 구분)",
-      "예(무라벨): 09:00-18:00, 09:00-19:00, H, -, 09:00-",
-      "예(라벨): 월 09:00-18:00, 화 09:00-19:00, 수 H, 목 -, 금 09:00-",
-      "H=공휴일(자동 8h), '-'=미입력",
+      "예: 09:00-18:00, 09:00-19:00, H, -, 09:00-",
+      "H=공휴일(자동 8h), -=미입력",
     ].join("\n");
     const input = await runAppleScriptPrompt(
       "Meowvertime",
@@ -698,6 +853,28 @@ const runActionIfNeeded = async ({ action, weekDateKeys, dayMetrics }) => {
 
     applyWeekUpdates(state, parsed.updates);
     await saveState(state);
+    return true;
+  }
+
+  if (action === "import-clipboard") {
+    const clipboardText = await readClipboardText();
+    if (clipboardText === null) {
+      await notify("Meowvertime", "클립보드를 읽지 못했어요.");
+      return true;
+    }
+
+    const parsed = parseClipboardImportText(clipboardText, weekDateKeys);
+    if (parsed.error) {
+      await notify("Meowvertime", parsed.error);
+      return true;
+    }
+
+    applyWeekUpdates(state, parsed.updates);
+    await saveState(state);
+    await notify(
+      "Meowvertime",
+      `클립보드 기록 ${parsed.updates.length}일치를 반영했어요.`,
+    );
     return true;
   }
 
@@ -760,7 +937,6 @@ const renderMenu = ({
       : `😼 +${formatDuration(overLiveMinutes)}`;
   const activeLineSuffix = "refresh=true";
 
-  // Keep menubar text color automatic so macOS can adapt to background.
   console.log(`${headline} | dropdown=false`);
   console.log("---");
   console.log(
@@ -843,6 +1019,9 @@ const renderMenu = ({
   );
   console.log(
     `📝 주간 한줄 입력(빠른 편집) | bash=${scriptRef} param1=edit-week terminal=false refresh=true`,
+  );
+  console.log(
+    `📋 Flex 화면 붙여넣기 import | bash=${scriptRef} param1=import-clipboard terminal=false refresh=true`,
   );
   console.log(
     `🧼 이번주 전체 기록 지우기 | bash=${scriptRef} param1=reset-week terminal=false refresh=true`,
