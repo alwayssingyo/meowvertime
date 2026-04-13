@@ -9,6 +9,8 @@
 
 const MINUTES_IN_DAY = 24 * 60;
 const BREAK_MINUTES_FIXED = 60; // 12:30~13:30
+const BREAK_START_MINUTES = 12 * 60 + 30;
+const BREAK_END_MINUTES = BREAK_START_MINUTES + BREAK_MINUTES_FIXED;
 const DAILY_BASE_MINUTES = 8 * 60;
 const DAILY_RECOGNIZED_MAX_MINUTES = 9 * 60;
 const WEEKLY_TARGET_MINUTES = 40 * 60;
@@ -53,6 +55,39 @@ const normalizeTimeText = (value) => {
 const getMinutesBetween = (startMinutes, endMinutes) => {
   const diff = endMinutes - startMinutes;
   return diff >= 0 ? diff : diff + MINUTES_IN_DAY;
+};
+
+const getRangeOverlapMinutes = (startA, endA, startB, endB) => {
+  const start = Math.max(startA, startB);
+  const end = Math.min(endA, endB);
+  return Math.max(0, end - start);
+};
+
+const getBreakOverlapMinutes = (startMinutes, endMinutes) => {
+  if (endMinutes >= startMinutes) {
+    return getRangeOverlapMinutes(
+      startMinutes,
+      endMinutes,
+      BREAK_START_MINUTES,
+      BREAK_END_MINUTES,
+    );
+  }
+
+  return (
+    getRangeOverlapMinutes(
+      startMinutes,
+      MINUTES_IN_DAY,
+      BREAK_START_MINUTES,
+      BREAK_END_MINUTES,
+    ) +
+    getRangeOverlapMinutes(0, endMinutes, BREAK_START_MINUTES, BREAK_END_MINUTES)
+  );
+};
+
+const getNetMinutesWithBreak = (startMinutes, endMinutes) => {
+  const grossMinutes = getMinutesBetween(startMinutes, endMinutes);
+  const breakMinutes = getBreakOverlapMinutes(startMinutes, endMinutes);
+  return Math.max(0, grossMinutes - breakMinutes);
 };
 
 const formatDuration = (totalMinutes) => {
@@ -325,7 +360,7 @@ const getHolidaySetFromEnv = () => {
 };
 
 // 일별 계산 핵심 로직:
-// - 고정 점심시간 차감
+// - 점심시간(12:30~13:30)과 실제 근무구간이 겹치는 만큼 차감
 // - 공휴일(자동/수동) 처리
 // - 인정근무 9h 상한 및 초과분 추적
 const evaluateDay = ({ record, dateKey, todayKey, nowMinutes, holidaySet }) => {
@@ -365,10 +400,7 @@ const evaluateDay = ({ record, dateKey, todayKey, nowMinutes, holidaySet }) => {
 
   const netCompleteMinutes =
     hasStart && hasEnd
-      ? Math.max(
-          0,
-          getMinutesBetween(startMinutes, endMinutes) - BREAK_MINUTES_FIXED,
-        )
+      ? getNetMinutesWithBreak(startMinutes, endMinutes)
       : 0;
   const creditedCompleteMinutes = Math.min(
     netCompleteMinutes,
@@ -380,10 +412,7 @@ const evaluateDay = ({ record, dateKey, todayKey, nowMinutes, holidaySet }) => {
   );
 
   const netLiveMinutes = isInProgress
-    ? Math.max(
-        0,
-        getMinutesBetween(startMinutes, nowMinutes) - BREAK_MINUTES_FIXED,
-      )
+    ? getNetMinutesWithBreak(startMinutes, nowMinutes)
     : netCompleteMinutes;
   const creditedLiveMinutes = Math.min(
     netLiveMinutes,
