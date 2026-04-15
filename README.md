@@ -9,7 +9,7 @@
 - 일별 인정근무는 최대 9시간(기본 8h + 오버타임 1h cap)까지 반영해옹
 - 금요일 필요 인정근무와 예상 퇴근 시각까지 보여줘옹
 
-## PreView
+## Preview
 
 ![meowvertime SwiftBar preview](docs/meowvertime-preview.png)
 
@@ -40,21 +40,18 @@ chmod +x "$HOME/Library/Application Support/SwiftBar/Plugins/meowvertime.1m.js"
 - 일별 인정 상한: `9h` (8h + 1h)
 - `9h` 초과분은 주간 합산에 반영되지 않는다냥
 - 금요일 필요 인정근무 = `40h - (월~목 인정 누적)`
-- 점심/휴게: `12:30~13:30` 고정(60분, 자동 차감)
+- 점심/휴게: `12:30~13:30` 구간과 실제 근무시간이 겹치는 만큼만 자동 차감
 
 ## 4) SwiftBar 입력 방식
 
-드롭다운에서 아래 메뉴로 입력해옹
+드롭다운에서 아래 방식으로 입력해옹
 
-- `월 입력`
-- `화 입력`
-- `수 입력`
-- `목 입력`
-- `금 입력`
+- `이번주 근무시간`의 `월/화/수/목/금` 행을 직접 클릭해서 해당 요일 수정
 - `주간 한줄 입력(빠른 편집)`
 - `Flex 화면 붙여넣기 import`
+- `이번주 전체 기록 지우기`
 
-`월/화/수/목/금 입력`은 해당 요일만 팝업으로 수정할 수 있다옹
+요일 행을 클릭하면 해당 요일만 팝업으로 수정할 수 있다옹
 
 - `H`: 공휴일(자동 8h)
 - `-`: 미입력
@@ -67,7 +64,9 @@ chmod +x "$HOME/Library/Application Support/SwiftBar/Plugins/meowvertime.1m.js"
 
 주간 기록은 JSON 파일에 저장돼옹.
 
-- 기본 위치: `scripts/swiftbar/.meowvertime-state.json`
+- 기본 위치: 실행 중인 스크립트와 같은 폴더의 `.meowvertime-state.json`
+  - 예: 로컬 실행 시 `scripts/swiftbar/.meowvertime-state.json`
+  - 예: SwiftBar 플러그인 실행 시 `$HOME/Library/Application Support/SwiftBar/Plugins/.meowvertime-state.json`
 - 원하는 위치로 변경: `MEOW_STATE_FILE`
 
 `Flex 화면 붙여넣기 import` 사용법:

@@ -16,6 +16,13 @@ const DAILY_RECOGNIZED_MAX_MINUTES = 9 * 60;
 const WEEKLY_TARGET_MINUTES = 40 * 60;
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금"];
+const WEEKDAY_EDIT_ACTIONS = [
+  "edit-mon",
+  "edit-tue",
+  "edit-wed",
+  "edit-thu",
+  "edit-fri",
+];
 const HOLIDAY_INPUT_TOKENS = new Set(["H", "HOL", "HOLIDAY", "공휴일"]);
 
 const BLACK_COLOR = "#000000";
@@ -965,6 +972,7 @@ const renderMenu = ({
       ? `💗 ${formatDuration(remainingLiveMinutes)}`
       : `😼 +${formatDuration(overLiveMinutes)}`;
   const activeLineSuffix = "refresh=true";
+  const scriptRef = shellSingleQuote(scriptPath || "meowvertime.1m.js");
 
   console.log(`${headline} | dropdown=false`);
   console.log("---");
@@ -975,34 +983,37 @@ const renderMenu = ({
     `${weekDateKeys[0]} ~ ${weekDateKeys[4]} | color=${BLACK_COLOR} ${activeLineSuffix}`,
   );
   console.log(
-    `🎯 진행률 ${buildProgressBar(creditsLiveMinutes, WEEKLY_TARGET_MINUTES)} ${progressPercent}% | color=${BLACK_COLOR} ${activeLineSuffix}`,
+    `🐾 진행률 ${buildProgressBar(creditsLiveMinutes, WEEKLY_TARGET_MINUTES)} ${progressPercent}% | color=${BLACK_COLOR} ${activeLineSuffix}`,
   );
   console.log(
-    `🧮 인정 누적 ${formatDuration(creditsLiveMinutes)} / ${formatDuration(WEEKLY_TARGET_MINUTES)} | color=${BLACK_COLOR} ${activeLineSuffix}`,
+    `🐟 인정 누적 ${formatDuration(creditsLiveMinutes)} / ${formatDuration(WEEKLY_TARGET_MINUTES)} | color=${BLACK_COLOR} ${activeLineSuffix}`,
   );
   console.log(
     remainingLiveMinutes > 0
-      ? `⏳ 주간 잔여 ${formatDuration(remainingLiveMinutes)} | color=${BLACK_COLOR} ${activeLineSuffix}`
-      : `🔥 주간 초과 ${formatDuration(overLiveMinutes)} | color=${BLACK_COLOR} ${activeLineSuffix}`,
+      ? `🧶 주간 잔여 ${formatDuration(remainingLiveMinutes)} | color=${BLACK_COLOR} ${activeLineSuffix}`
+      : `😾 주간 초과 ${formatDuration(overLiveMinutes)} | color=${BLACK_COLOR} ${activeLineSuffix}`,
   );
   console.log(
-    `💰 쌓은 시간 ${formatDuration(totalBankedLiveMinutes)} | color=${BLACK_COLOR} ${activeLineSuffix}`,
+    `🍼 쌓은 시간 ${formatDuration(totalBankedLiveMinutes)} | color=${BLACK_COLOR} ${activeLineSuffix}`,
   );
   if (totalCapLossLiveMinutes > 0) {
     console.log(
-      `⚠️ 9h 초과 미반영 ${formatDuration(totalCapLossLiveMinutes)} | color=${BLACK_COLOR} ${activeLineSuffix}`,
+      `🙀 9h 초과 미반영 ${formatDuration(totalCapLossLiveMinutes)} | color=${BLACK_COLOR} ${activeLineSuffix}`,
     );
   }
 
   console.log("---");
-  console.log(`📊 이번주 근무시간 | color=${BLACK_COLOR} ${activeLineSuffix}`);
+  console.log(`🍭 이번주 근무시간 | color=${BLACK_COLOR} ${activeLineSuffix}`);
   dayMetrics.forEach((metric, index) => {
     const line = getDayLine(metric, index);
-    console.log(`${line.text} | color=${line.color} ${activeLineSuffix}`);
+    const dayAction = WEEKDAY_EDIT_ACTIONS[index];
+    console.log(
+      `${line.text} | color=${line.color} bash=${scriptRef} param1=${dayAction} terminal=false ${activeLineSuffix}`,
+    );
   });
 
   console.log("---");
-  console.log(`🗓️ 금요일 예상 | color=${BLACK_COLOR} ${activeLineSuffix}`);
+  console.log(`🏠 금요일 예상 | color=${BLACK_COLOR} ${activeLineSuffix}`);
   console.log(
     `금요일 필요 인정근무: ${formatDuration(fridayNeedMinutes)} | color=${BLACK_COLOR} ${activeLineSuffix}`,
   );
@@ -1029,28 +1040,12 @@ const renderMenu = ({
     );
   }
 
-  const scriptRef = shellSingleQuote(scriptPath || "meowvertime.1m.js");
   console.log("---");
-  console.log(
-    `🗓 월 입력 | bash=${scriptRef} param1=edit-mon terminal=false refresh=true`,
-  );
-  console.log(
-    `🗓 화 입력 | bash=${scriptRef} param1=edit-tue terminal=false refresh=true`,
-  );
-  console.log(
-    `🗓 수 입력 | bash=${scriptRef} param1=edit-wed terminal=false refresh=true`,
-  );
-  console.log(
-    `🗓 목 입력 | bash=${scriptRef} param1=edit-thu terminal=false refresh=true`,
-  );
-  console.log(
-    `🗓 금 입력 | bash=${scriptRef} param1=edit-fri terminal=false refresh=true`,
-  );
   console.log(
     `📝 주간 한줄 입력(빠른 편집) | bash=${scriptRef} param1=edit-week terminal=false refresh=true`,
   );
   console.log(
-    `📋 Flex 화면 붙여넣기 import | bash=${scriptRef} param1=import-clipboard terminal=false refresh=true`,
+    `📥 Flex 화면 붙여넣기 import | bash=${scriptRef} param1=import-clipboard terminal=false refresh=true`,
   );
   console.log(
     `🧼 이번주 전체 기록 지우기 | bash=${scriptRef} param1=reset-week terminal=false refresh=true`,
